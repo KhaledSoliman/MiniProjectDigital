@@ -90,8 +90,8 @@ class Pin:
         s = ""
         s += self.type + ": " + self.name + "\n"
         s += "    " + "Name: " + self.net + "\n"
-        s += "    " + "Direction: " + self.direction + "\n"
-        s += "    " + "Use: " + self.use + "\n"
+        # s += "    " + "Direction: " + self.direction if self.direction is not None else "0" + "\n"
+        # s += "    " + "Use: " + self.use if self.use is not None else "0" + "\n"
         if self.layer:
             s += "    " + "Layer: " + str(self.layer) + "\n"
         if self.placed:
