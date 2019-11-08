@@ -1,0 +1,15 @@
+cycler==0.10.0
+Django==2.2.1
+django-cors-headers==3.0.1
+kiwisolver==1.1.0
+lark-parser==0.7.8
+liberty-parser==0.0.4
+matplotlib==3.1.1
+mpmath==1.1.0
+numpy==1.17.3
+pyparsing==2.4.4
+python-dateutil==2.8.1
+pytz==2019.3
+six==1.13.0
+sqlparse==0.3.0
+sympy==1.4
