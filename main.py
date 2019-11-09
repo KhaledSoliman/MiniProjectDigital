@@ -3,7 +3,8 @@ from lef_parser import LefParser
 from def_parser import DefParser
 import re
 liberty_file = "Testing Files/osu035.lib"
-lef_file = "libraries/Nangate/NangateOpenCellLibrary.lef"
+lef_file = "Testing Files/osu035_stdcells.lef"
+# lef_file = "libraries/Nangate/NangateOpenCellLibrary.lef"
 def_file = "Testing Files/timer.def"
 input_file = "Testing Files/input.txt"
 library = parse_liberty(open(liberty_file).read())
@@ -27,8 +28,6 @@ print(inputFile)
 #         print(layer.width)
 #         print(layer.height)
 #
-# for net in defFile.nets:
-#     print(net)
 
 
 # lefFile.via_dict
@@ -38,9 +37,21 @@ print(inputFile)
 #
 # print(lefFile.macro_dict.values())
 
+for comp in defFile.components:
+    for pin in defFile.pins:
+        for net in defFile.nets:
+            for x in net.comp_pin:
+                if pin.net in x or comp.name in x:
+                    print(pin.name)
+                    print(pin.placed)
+                    print(comp.name)
+                    print(comp.placed)
+                    print(net)
 
-for pin in defFile.pins:
-    print(pin)
+
+
+
+
 
 def calculateDelay():
     calculateDelayCells()
