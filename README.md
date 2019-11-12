@@ -9,7 +9,7 @@ The user has to specify the path cells in a file which our utility will read and
 
 ### Prerequisites
 
-The user file has to follow a specific format that is specifing the gate/pin an example for this is: 
+The user file has to follow a specific format that is specifing the gate/pin (where gate name exists in DEF file) an example for this is: 
 
 ```
 AND2X2_2/A
