@@ -37,12 +37,11 @@ Explain how to run the automated tests for this system
 
 ### Break of the test cases 
 
-There are 11 test cases placed under examples folder. 
-
-Note: The first 10 cases are valid, yet the the last test case which has a discontinuous path which will create an exception in the validation stage. 
+There are 11 test cases placed under examples folder. The first 10 cases are valid, yet test case number 11 has a discontinuous path which will create an exception in the validation stage. i.e:
 
 ```
 The path is discontinuous!
+
 ```
 
 
@@ -57,7 +56,7 @@ Find our project's code at [GitHub](https://github.com/KhaledSoliman/MiniProject
 
 ## Authors
 
-* **Khalid Soliman** - [KhaledSoliman](https://github.com/KhaledSoliman)
+* **Khaled Soliman** - [KhaledSoliman](https://github.com/KhaledSoliman)
 
 * **Mohamed Elsayed** - [MohamedSamirr](https://github.com/MohamedSamirr)
 
