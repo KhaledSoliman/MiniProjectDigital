@@ -3855,7 +3855,8 @@ NETS 679 ;
   NEW metal3 ( 36000 18600 ) ( 36800 * ) M3_M2 
   NEW metal1 ( 36800 18600 ) M2_M1 ;
 - _3_
-  ( DFFSR_50 D ) 
+  ( DFFSR_50 D )
+
   ( NOR2X1_16 Y ) 
 + ROUTED metal1 ( 36960 21400 ) M2_M1 
   NEW metal2 ( 36960 21400 ) ( * 18800 ) M2_M1 
