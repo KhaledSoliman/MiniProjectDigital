@@ -372,10 +372,10 @@ class Main:
 #                     print(net)
 #
 
-liberty_path = "input-files/osu035.lib"
-lef_path = "input-files/osu035_stdcells.lef"
-def_path = "input-files/timer.def"
-input_path = "tests/1.txt"
+liberty_path = input ("input liberity file path")
+lef_path = input ("input lef file path")
+def_path = input ("input def file path")
+input_path = input ("input (input path) file")
 
 main = Main(input_path, liberty_path, lef_path, def_path)
 main.run()
