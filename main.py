@@ -81,7 +81,9 @@ class Main:
 
     def run(self):
         self.parse_files()
-        self.get_path()
+        self.check_path_continuity()
+        self.get_path_delay('fall')
+        self.get_path_delay('rise')
 
     def scale_dimension(self, dimension):
         return int(self.SCALE * dimension)
@@ -124,10 +126,25 @@ class Main:
         return (lower_left_corner[0] <= point[0] <= upper_right_corner[0]) and (
                 lower_left_corner[1] <= point[1] <= upper_right_corner[1])
 
-    def get_path(self):
+    def check_path_continuity(self):
         path = self.pathFile.get_path()
         curr_node = path.nodeat(0)
-        unate = "rise"
+        while curr_node is not None:
+            # Get current point in the path
+            point_one = curr_node.value
+            curr_comp_macro = self.lefFile.macro_dict.get(point_one.get_component().split('_')[0])
+            output_pin = self.find_output_pin_name(curr_comp_macro.pin_dict)
+            net = self.find_net_of_comp_pin(point_one.get_component(), output_pin)
+            point_two = curr_node.next.value if curr_node.next is not None else None
+            if point_two is not None:
+                if not self.point_is_in_net(point_two, net):
+                    raise Exception("Path is discontinuous.")
+            curr_node = curr_node.next
+
+
+    def get_path_delay(self, unate):
+        path = self.pathFile.get_path()
+        curr_node = path.nodeat(0)
         total_delay = 0
         input_transition_time = 0
         while curr_node is not None:
@@ -213,7 +230,7 @@ class Main:
             else:
                 pass
             curr_node = curr_node.next
-        print(total_delay, " secs")
+        print(unate, total_delay, " secs")
 
     @staticmethod
     def flip_unate(unate):
@@ -321,11 +338,10 @@ class Main:
 #                     print(net)
 #
 
-
-liberty_path = "Testing Files/osu035.lib"
-lef_path = "Testing Files/osu035_stdcells.lef"
-def_path = "Testing Files/timer.def"
-input_path = "Testing Files/input.txt"
+liberty_path = "input-files/osu035.lib"
+lef_path = "input-files/osu035_stdcells.lef"
+def_path = "input-files/timer.def"
+input_path = "tests/TestCaseEleven.txt"
 
 main = Main(input_path, liberty_path, lef_path, def_path)
 main.run()
