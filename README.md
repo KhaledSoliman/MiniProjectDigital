@@ -19,6 +19,14 @@ DFFSR_46/D
 
 ```
 
+
+### Assumptions
+
+ - Input transition time of 0 (vertical slope) at first pin
+ - Input unate of RISE and FALL are both used taking the maximum delay of the two as the output delay
+ - If cell is non_unate both RISE and FALL delays are calculated taking the worst of the two (Warning Issued)
+ - If only one starting point and one ending point are mentioned with no clear path, the worst path is selected
+
 ### How to run this project? ----------------------------
 
 
@@ -63,8 +71,8 @@ Find our project's code at [GitHub](https://github.com/KhaledSoliman/MiniProject
 ## References 
 
 * [Def Parser](https://github.com/trimcao/lef-parser)  
-* [Lef PArser](https://github.com/trimcao/lef-parser)
+* [Lef Parser](https://github.com/trimcao/lef-parser)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details ----------------------
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for more details.

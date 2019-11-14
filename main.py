@@ -50,7 +50,7 @@ class Util:
 
     @staticmethod
     def interpolate(x, y, z, inter_x, inter_y):
-        y_interp = scipy.interpolate.interp2d(x, y, z, kind="cubic")
+        y_interp = scipy.interpolate.interp2d(x, y, z, kind="linear")
         return y_interp(inter_x, inter_y)
 
     # TODO:: do not interpolate if exists
@@ -146,8 +146,12 @@ class Main:
     def run(self):
         self.parse_files()
         self.check_path_continuity()
-        self.get_path_delay('fall')
-        self.get_path_delay('rise')
+        self.get_worst_delay()
+
+    def get_worst_delay(self):
+        fall = self.get_path_delay('fall')
+        rise = self.get_path_delay('rise')
+        print("worst", max(fall, rise), "secs")
 
     def scale_dimension(self, dimension):
         return int(self.SCALE * dimension)
@@ -214,31 +218,30 @@ class Main:
                 next_comp_location = self.find_component_location(point_two.get_component())
                 # Get the width of the next component
                 next_comp_width = self.scale_dimension(next_comp_macro.info["SIZE"][0])
-                cell_delay, input_transition_time, unate = self.calc_cells_delay(unate, input_transition_time,
-                                                                                 net.comp_pin,
-                                                                                 point_one.get_component(),
-                                                                                 point_one.get_pin(),
-                                                                                 output_pin)
-                r_drive = self.calc_r_drive(cell_delay, unate, point_one.get_component().split("_")[0],
-                                            point_one.get_pin())
+                cell_delay, input_transition_time, unate, total_net_cap = \
+                    self.calc_cells_delay(unate,
+                                          input_transition_time,
+                                          net.comp_pin,
+                                          point_one.get_component(),
+                                          point_one.get_pin(),
+                                          output_pin)
+                r_drive = cell_delay / total_net_cap
                 interconnect_delay = self.cal_interconnect_delay(net.routed, curr_comp_location, curr_comp_width,
                                                                  next_comp_location,
                                                                  next_comp_width, r_drive)
                 total_delay += cell_delay + interconnect_delay
             elif point_two is not None and point_two.get_component() == point_one.get_component():
-                cell_delay, input_transition_time, unate = self.calc_cells_delay(unate, input_transition_time,
-                                                                                 net.comp_pin,
-                                                                                 point_one.get_component(),
-                                                                                 point_one.get_pin(),
-                                                                                 output_pin)
+                cell_delay, input_transition_time, unate, total_net_cap = self.calc_cells_delay(unate,
+                                                                                                input_transition_time,
+                                                                                                net.comp_pin,
+                                                                                                point_one.get_component(),
+                                                                                                point_one.get_pin(),
+                                                                                                output_pin)
                 total_delay += cell_delay
 
             curr_node = curr_node.next
-        print(unate, total_delay, " secs")
-
-    def calc_r_drive(self, cell_delay, unate, cell_name, input_pin):
-        cap = self.get_pin_cap(cell_name, input_pin, unate)
-        return cell_delay / cap
+        print(unate, total_delay, "secs")
+        return total_delay
 
     def calc_cells_delay(self, unate, input_transition_time, cells, path_cell, input_pin, output_pin):
         """
@@ -253,10 +256,11 @@ class Main:
         """
         total_net_cap = 0
         for comp in cells:
-            if comp[0] != path_cell:
+            if comp[0] != path_cell and comp[0] not in self.defFile.pins:
                 total_net_cap += self.get_pin_cap(comp[0].split('_')[0], comp[1])
-        return self.get_arc_cap_trans(path_cell.split('_')[0], input_pin, output_pin, unate, total_net_cap,
-                                      input_transition_time)
+        cell_delay, input_transition_time, unate = self.get_arc_cap_trans(path_cell.split('_')[0], input_pin,
+                                                                          output_pin, unate, total_net_cap, input_transition_time)
+        return cell_delay, input_transition_time, unate, total_net_cap
 
     def get_layer(self, layer_name):
         """
@@ -306,9 +310,9 @@ class Main:
         for route in routes:
             if len(route.points) > 1:
                 layer = self.get_layer(route.layer)
-                length = Util.calc_length_segment(route) * 10 ** -9
-                width = length * self.scale_dimension(layer.width) * 10 ** -9
-                capacitance = layer.capacitance[1] * (length * width)
+                length = Util.calc_length_segment(route) * 10 ** -3
+                width = length * self.scale_dimension(layer.width) * 10 ** -3
+                capacitance = (layer.capacitance[1] * 10 ** -12) * (length * width)
                 resistance = layer.resistance[1] * (length / width)
                 delay += r_drive * capacitance
                 r_drive += resistance
@@ -326,22 +330,53 @@ class Main:
         :param input_transition: the output transition time of the previous cell
         :return: the delay in seconds, the output transition time of the current cell, the unate at output
         """
+        clk_transition = 0.1
+        sequential = (cell_name[0] == 'D')
+        sequential_input_name = input_pin_name
+        input_pin_name = 'CLK' if sequential else input_pin_name
+        sequential_delay = 0
+        if sequential:
+            timings = self.library.get_group("cell", cell_name).get_group("pin", sequential_input_name).get_groups("timing")
+            for timing in timings:
+                unate_constraint = timing.get_group(unate + "_constraint")
+                uc_index1, uc_index2, uc_values = Util.convert_to_float_arrays(unate_constraint.attributes["index_1"],
+                                                                               unate_constraint.attributes["index_2"],
+                                                                               unate_constraint.attributes["values"])
+                sequential_delay += Util.interpolate(uc_index2, uc_index1, uc_values, clk_transition, input_transition)
+
         timings = self.library.get_group("cell", cell_name).get_group("pin", output_pin_name).get_groups("timing")
+        input_transition = input_transition if not sequential else clk_transition
         for timing in timings:
             if timing.attributes["related_pin"] == input_pin_name:
-                unate = Util.determine_unate(timing.attributes["timing_sense"], unate)
-                cell_unate = timing.get_group("cell_" + unate)
-                unate_transition = timing.get_group(unate + "_transition")
-                cu_index1, cu_index2, cu_values = Util.convert_to_float_arrays(cell_unate.attributes["index_1"],
-                                                                               cell_unate.attributes["index_2"],
-                                                                               cell_unate.attributes["values"])
-                ut_index1, ut_index2, ut_values = Util.convert_to_float_arrays(unate_transition.attributes["index_1"],
-                                                                               unate_transition.attributes["index_2"],
-                                                                               unate_transition.attributes["values"])
-                delay = Util.interpolate(cu_index1, cu_index2, cu_values, total_net_capacitance, input_transition)
-                output_transition = Util.interpolate(ut_index1, ut_index2, ut_values, total_net_capacitance,
-                                                     input_transition)
-                return delay, output_transition, unate
+                if timing.attributes["timing_sense"] == "non_unate":
+                    delay_fall, output_transition_fall = self.get_cell_delay(timing, 'fall', total_net_capacitance,
+                                                                             input_transition)
+                    delay_rising, output_transition_rising = self.get_cell_delay(timing, 'rise', total_net_capacitance,
+                                                                                 input_transition)
+                    if delay_fall > delay_rising:
+                        return delay_fall+sequential_delay, output_transition_fall, 'fall'
+                    else:
+                        return delay_rising+sequential_delay, output_transition_rising, 'rise'
+                else:
+                    unate = Util.determine_unate(timing.attributes["timing_sense"], unate)
+                    delay, output_transition = self.get_cell_delay(timing, unate, total_net_capacitance,
+                                                                   input_transition)
+                    return delay+sequential_delay, output_transition, unate
+
+    @staticmethod
+    def get_cell_delay(timing, unate, total_net_capacitance, input_transition):
+        cell_unate = timing.get_group("cell_" + unate)
+        unate_transition = timing.get_group(unate + "_transition")
+        cu_index1, cu_index2, cu_values = Util.convert_to_float_arrays(cell_unate.attributes["index_1"],
+                                                                       cell_unate.attributes["index_2"],
+                                                                       cell_unate.attributes["values"])
+        ut_index1, ut_index2, ut_values = Util.convert_to_float_arrays(unate_transition.attributes["index_1"],
+                                                                       unate_transition.attributes["index_2"],
+                                                                       unate_transition.attributes["values"])
+        delay = Util.interpolate(cu_index1, cu_index2, cu_values, total_net_capacitance, input_transition)
+        output_transition = Util.interpolate(ut_index1, ut_index2, ut_values, total_net_capacitance,
+                                             input_transition)
+        return delay, output_transition
 
     def get_pin_cap(self, cell_name, pin_name, unate=None):
         """
@@ -354,28 +389,31 @@ class Main:
         pin = self.library.get_group("cell", cell_name).get_group("pin", pin_name)
         return pin.attributes["capacitance"] if unate is None else pin.attributes[unate + "_capacitance"]
 
+    def get_all_possible_paths(self):
+        path = self.pathFile.get_path()
+        starting_point = path.nodeat(0).value
+        ending_point = path.nodeat(1).value
 
-# print(str(library))
-# lefFile.via_dict
-# lefFile.macro_dict
-# lefFile.stack
-# lefFile.statements
-# for comp in defFile.components:
-#     for pin in defFile.pins:
-#         for net in defFile.nets:
-#             for x in net.comp_pin:
-#                 if pin.net in x or comp.name in x:
-#                     print(pin.name)
-#                     print(pin.placed)
-#                     print(comp.name)
-#                     print(comp.placed)
-#                     print(net)
-#
+    @staticmethod
+    def find_all_paths(self, graph, start, end, path=[]):
+        path = path + [start]
+        if start == end:
+            return [path]
+        if not graph.has_key(start):
+            return []
+        paths = []
+        for node in graph[start]:
+            if node not in path:
+                newpaths = self.find_all_paths(graph, node, end, path)
+                for newpath in newpaths:
+                    paths.append(newpath)
+        return paths
 
-liberty_path = input ("input liberity file path")
-lef_path = input ("input lef file path")
-def_path = input ("input def file path")
-input_path = input ("input (input path) file")
+
+liberty_path = "input-files/osu035.lib"
+lef_path = "input-files/osu035_stdcells.lef"
+def_path = "input-files/timer.def"
+input_path = "tests/5.txt"
 
 main = Main(input_path, liberty_path, lef_path, def_path)
 main.run()
